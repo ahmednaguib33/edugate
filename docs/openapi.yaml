@@ -230,6 +230,47 @@ paths:
                   data: { $ref: '#/components/schemas/Program' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /leads:
+    post:
+      tags: [Applications]
+      summary: Capture a public lead (no authentication)
+      description: >
+        Submit a prospective student's interest in a program without an account.
+        Stored as an application (source `website`) for the back-office to follow up.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program_id, full_name, email]
+              properties:
+                program_id: { type: integer, example: 1 }
+                preferred_university_id: { type: integer, nullable: true }
+                full_name: { type: string, example: Mohammed Al-Otaibi }
+                email: { type: string, format: email }
+                phone: { type: string, example: "+966500000000" }
+                nationality: { type: string, example: Saudi Arabia }
+                current_education: { type: string }
+                preferred_intake: { type: string, example: Fall 2026 }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Lead received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      application_number: { type: string, example: EG-2026-AB12CD }
+                      status: { type: string, example: pending }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
   /applications:
     get:
       tags: [Applications]

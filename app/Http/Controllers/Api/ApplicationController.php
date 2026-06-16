@@ -36,6 +36,7 @@ class ApplicationController extends Controller
             ...$request->validated(),
             'user_id' => auth('api')->id(),
             'status' => ApplicationStatus::Pending,
+            'source' => 'portal',
         ]);
 
         $application->load(['program.faculty', 'preferredUniversity']);

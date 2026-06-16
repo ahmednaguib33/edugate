@@ -12,11 +12,14 @@ return new class extends Migration
         Schema::create('applications', function (Blueprint $table) {
             $table->id();
             $table->string('application_number')->unique();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            // Nullable: applications can be submitted by an authenticated student
+            // or captured as an anonymous public lead (no account).
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('program_id')->nullable()->constrained('programs')->nullOnDelete();
             $table->foreignId('preferred_university_id')->nullable()->constrained('universities')->nullOnDelete();
             $table->foreignId('assigned_agent_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('status')->default(ApplicationStatus::Pending->value);
+            $table->string('source')->default('website');
 
             // Applicant snapshot (kept even if the user later edits their profile).
             $table->string('full_name');

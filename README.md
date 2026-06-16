@@ -136,12 +136,17 @@ Base path: `/api`
 | GET    | `/programs`             | filter: `degree_level`, `faculty`, `university`, `language`, `min_tuition`, `max_tuition`, `featured`, `q`, `sort` |
 | GET    | `/programs/{slug}`      | |
 
-### Applications (student)
-| Method | Endpoint               |
-| ------ | ---------------------- |
-| GET    | `/applications`        |
-| POST   | `/applications`        |
-| GET    | `/applications/{id}`   |
+### Leads & applications
+| Method | Endpoint               | Access  | Notes |
+| ------ | ---------------------- | ------- | ----- |
+| POST   | `/leads`               | public  | Capture a prospective student (no account needed) |
+| GET    | `/applications`        | student | List my applications |
+| POST   | `/applications`        | student | Submit an application |
+| GET    | `/applications/{id}`   | student | View my application |
+
+> A **public lead** (`POST /leads`) and a **student application** (`POST /applications`)
+> both create an `Application`; leads have no `user_id` and `source: website`,
+> student applications have `source: portal`. The admin pipeline manages both.
 
 ### Admin (`/admin`, role: admin/agent)
 | Method | Endpoint                       | Access |

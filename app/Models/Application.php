@@ -25,6 +25,7 @@ class Application extends Model
         'preferred_university_id',
         'assigned_agent_id',
         'status',
+        'source',
         'full_name',
         'email',
         'phone',

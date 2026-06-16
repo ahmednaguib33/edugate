@@ -23,6 +23,7 @@ class ApplicationResource extends JsonResource
                 'value' => $this->status?->value,
                 'label' => $this->status?->label(),
             ],
+            'source' => $this->source,
             'applicant' => [
                 'full_name' => $this->full_name,
                 'email' => $this->email,

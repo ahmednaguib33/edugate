@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\UniversityController as AdminUniversityContro
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FacultyController;
+use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\UniversityController;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,9 @@ Route::get('faculties', [FacultyController::class, 'index']);
 Route::get('faculties/{faculty}', [FacultyController::class, 'show']);
 Route::get('programs', [ProgramController::class, 'index']);
 Route::get('programs/{program}', [ProgramController::class, 'show']);
+
+// Public lead capture (no authentication required).
+Route::post('leads', [LeadController::class, 'store']);
 
 /*
 | Student area (authenticated)
