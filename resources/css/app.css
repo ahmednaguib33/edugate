@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views';
+
+@theme {
+    --font-sans: 'Cairo', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* EduGate brand — deep Nile navy + Egyptian gold */
+    --color-brand-50: #eef5fb;
+    --color-brand-100: #d6e6f4;
+    --color-brand-200: #aecde9;
+    --color-brand-300: #7baad6;
+    --color-brand-400: #4683bf;
+    --color-brand-500: #1f5e9c;
+    --color-brand-600: #174c82;
+    --color-brand-700: #123d6a;
+    --color-brand-800: #0d2e51;
+    --color-brand-900: #0a2540;
+
+    --color-gold-300: #f7d987;
+    --color-gold-400: #f2c75e;
+    --color-gold-500: #e6b23e;
+    --color-gold-600: #c8922a;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        font-family: var(--font-sans);
+        @apply bg-slate-50 text-slate-800 antialiased;
+    }
+}
