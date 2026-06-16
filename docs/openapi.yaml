@@ -1,0 +1,697 @@
+openapi: 3.0.3
+info:
+  title: EduGate API
+  version: 1.0.0
+  description: >
+    Backend API for **EduGate** — a platform that helps Arab and Gulf students
+    study at accredited Egyptian universities. It exposes a public catalog of
+    universities, faculties and degree programs (Bachelor / Master / PhD),
+    student authentication, an application (lead) pipeline, and a back-office
+    admin area for managing the catalog and applications.
+
+    ## Authentication
+    The API uses stateless **JWT** bearer tokens. Obtain a token from
+    `POST /auth/login` or `POST /auth/register`, then send it as
+    `Authorization: Bearer <token>` on protected endpoints.
+
+    ## Roles
+    - `student` — can register, browse the catalog and submit/track applications.
+    - `agent` — back-office: view & update applications, view students & stats.
+    - `admin` — full access, including catalog CRUD and deletions.
+servers:
+  - url: http://localhost:8000/api
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Catalog
+  - name: Applications
+  - name: Admin
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new student account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name: { type: string, example: Sara Ali }
+                email: { type: string, format: email, example: sara@example.com }
+                password: { type: string, format: password, minLength: 8, example: secret123 }
+                password_confirmation: { type: string, example: secret123 }
+                phone: { type: string, example: "+966500000000" }
+                nationality: { type: string, example: Kuwait }
+                country_of_residence: { type: string, example: Kuwait }
+      responses:
+        '201': { $ref: '#/components/responses/AuthToken' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: admin@edugate.test }
+                password: { type: string, format: password, example: password }
+      responses:
+        '200': { $ref: '#/components/responses/AuthToken' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Account deactivated }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the authenticated user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate the current token
+      responses:
+        '200': { description: Successfully logged out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh the current token
+      responses:
+        '200': { $ref: '#/components/responses/AuthToken' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /universities:
+    get:
+      tags: [Catalog]
+      summary: List active universities
+      security: []
+      parameters:
+        - { in: query, name: q, schema: { type: string }, description: Search by name or city }
+        - { in: query, name: city, schema: { type: string } }
+        - { in: query, name: per_page, schema: { type: integer, default: 15 } }
+      responses:
+        '200':
+          description: Paginated universities
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Pagination'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/University' }
+
+  /universities/{slug}:
+    get:
+      tags: [Catalog]
+      summary: Show a university with its active programs
+      security: []
+      parameters:
+        - { in: path, name: slug, required: true, schema: { type: string }, example: cairo-university }
+      responses:
+        '200':
+          description: University
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/University' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /faculties:
+    get:
+      tags: [Catalog]
+      summary: List active faculties
+      security: []
+      parameters:
+        - { in: query, name: q, schema: { type: string } }
+      responses:
+        '200':
+          description: Faculties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Faculty' }
+
+  /faculties/{slug}:
+    get:
+      tags: [Catalog]
+      summary: Show a faculty with its active programs
+      security: []
+      parameters:
+        - { in: path, name: slug, required: true, schema: { type: string }, example: medicine }
+      responses:
+        '200':
+          description: Faculty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Faculty' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /programs:
+    get:
+      tags: [Catalog]
+      summary: List active programs (with filtering, search & sorting)
+      security: []
+      parameters:
+        - { in: query, name: degree_level, schema: { type: string, enum: [bachelor, master, phd] } }
+        - { in: query, name: language, schema: { type: string, enum: [arabic, english, both] } }
+        - { in: query, name: faculty, schema: { type: string }, description: Faculty slug or id }
+        - { in: query, name: university, schema: { type: string }, description: University slug or id }
+        - { in: query, name: min_tuition, schema: { type: number } }
+        - { in: query, name: max_tuition, schema: { type: number } }
+        - { in: query, name: featured, schema: { type: boolean } }
+        - { in: query, name: q, schema: { type: string }, description: Search by title/description }
+        - { in: query, name: sort, schema: { type: string, enum: [tuition_asc, tuition_desc, newest, title] } }
+        - { in: query, name: per_page, schema: { type: integer, default: 15 } }
+      responses:
+        '200':
+          description: Paginated programs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Pagination'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Program' }
+
+  /programs/{slug}:
+    get:
+      tags: [Catalog]
+      summary: Show a program with faculty and offering universities
+      security: []
+      parameters:
+        - { in: path, name: slug, required: true, schema: { type: string }, example: bachelor-medicine }
+      responses:
+        '200':
+          description: Program
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Program' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /applications:
+    get:
+      tags: [Applications]
+      summary: List the authenticated student's applications
+      responses:
+        '200':
+          description: Paginated applications
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Pagination'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Applications]
+      summary: Submit a new application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program_id, full_name, email]
+              properties:
+                program_id: { type: integer, example: 1 }
+                preferred_university_id: { type: integer, nullable: true, example: 1 }
+                full_name: { type: string, example: Sara Ali }
+                email: { type: string, format: email }
+                phone: { type: string }
+                nationality: { type: string, example: Kuwait }
+                current_education: { type: string, example: High School Diploma }
+                preferred_intake: { type: string, example: Fall 2026 }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Created application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /applications/{id}:
+    get:
+      tags: [Applications]
+      summary: Show one of the authenticated student's applications
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/dashboard/stats:
+    get:
+      tags: [Admin]
+      summary: Aggregated dashboard statistics (admin/agent)
+      responses:
+        '200': { description: Statistics object }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/applications:
+    get:
+      tags: [Admin]
+      summary: List all applications (admin/agent)
+      parameters:
+        - { in: query, name: status, schema: { type: string, enum: [pending, reviewing, documents_required, accepted, rejected, enrolled, cancelled] } }
+        - { in: query, name: program_id, schema: { type: integer } }
+        - { in: query, name: assigned_agent_id, schema: { type: integer } }
+        - { in: query, name: unassigned, schema: { type: boolean } }
+        - { in: query, name: q, schema: { type: string } }
+      responses:
+        '200': { description: Paginated applications }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/applications/{id}:
+    get:
+      tags: [Admin]
+      summary: Show an application (admin/agent)
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Application }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [Admin]
+      summary: Update an application's status / assignment / notes (admin/agent)
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [pending, reviewing, documents_required, accepted, rejected, enrolled, cancelled] }
+                assigned_agent_id: { type: integer, nullable: true }
+                preferred_university_id: { type: integer, nullable: true }
+                admin_notes: { type: string }
+      responses:
+        '200': { description: Updated application }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Admin]
+      summary: Delete an application (admin only)
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/students:
+    get:
+      tags: [Admin]
+      summary: List students (admin/agent)
+      parameters: [{ in: query, name: q, schema: { type: string } }]
+      responses:
+        '200': { description: Paginated students }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/students/{id}:
+    get:
+      tags: [Admin]
+      summary: Show a student and their applications (admin/agent)
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Student with applications }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/universities:
+    get:
+      tags: [Admin]
+      summary: List all universities (admin only)
+      responses:
+        '200': { description: Paginated universities }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      summary: Create a university (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UniversityInput' }
+      responses:
+        '201': { description: Created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /admin/universities/{slug}:
+    get:
+      tags: [Admin]
+      summary: Show a university (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: University }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Admin]
+      summary: Update a university (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UniversityInput' }
+      responses:
+        '200': { description: Updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Admin]
+      summary: Delete a university (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/faculties:
+    get:
+      tags: [Admin]
+      summary: List all faculties (admin only)
+      responses:
+        '200': { description: Paginated faculties }
+    post:
+      tags: [Admin]
+      summary: Create a faculty (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FacultyInput' }
+      responses:
+        '201': { description: Created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /admin/faculties/{slug}:
+    get:
+      tags: [Admin]
+      summary: Show a faculty (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Faculty }
+    put:
+      tags: [Admin]
+      summary: Update a faculty (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FacultyInput' }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Admin]
+      summary: Delete a faculty (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Deleted }
+
+  /admin/programs:
+    get:
+      tags: [Admin]
+      summary: List all programs (admin only)
+      responses:
+        '200': { description: Paginated programs }
+    post:
+      tags: [Admin]
+      summary: Create a program (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProgramInput' }
+      responses:
+        '201': { description: Created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /admin/programs/{slug}:
+    get:
+      tags: [Admin]
+      summary: Show a program (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Program }
+    put:
+      tags: [Admin]
+      summary: Update a program (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProgramInput' }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Admin]
+      summary: Delete a program (admin only)
+      parameters: [{ in: path, name: slug, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Deleted }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  security:
+    - bearerAuth: []
+  responses:
+    AuthToken:
+      description: Authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              access_token: { type: string }
+              token_type: { type: string, example: bearer }
+              expires_in: { type: integer, example: 86400 }
+              user: { $ref: '#/components/schemas/User' }
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Authenticated but not allowed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+    Pagination:
+      type: object
+      properties:
+        data: { type: array, items: {} }
+        links: { type: object }
+        meta:
+          type: object
+          properties:
+            current_page: { type: integer }
+            last_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [admin, agent, student] }
+        role_label: { type: string }
+        phone: { type: string, nullable: true }
+        nationality: { type: string, nullable: true }
+        country_of_residence: { type: string, nullable: true }
+        is_active: { type: boolean }
+    University:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: object, properties: { en: { type: string }, ar: { type: string } } }
+        slug: { type: string }
+        city: { type: string, nullable: true }
+        description: { type: object, properties: { en: { type: string }, ar: { type: string } } }
+        logo_url: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        is_accredited: { type: boolean }
+        established_year: { type: integer, nullable: true }
+        global_ranking: { type: integer, nullable: true }
+        is_active: { type: boolean }
+        programs_count: { type: integer }
+    Faculty:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: object, properties: { en: { type: string }, ar: { type: string } } }
+        slug: { type: string }
+        description: { type: object, properties: { en: { type: string }, ar: { type: string } } }
+        icon: { type: string, nullable: true }
+        is_active: { type: boolean }
+        programs_count: { type: integer }
+    Program:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: object, properties: { en: { type: string }, ar: { type: string } } }
+        slug: { type: string }
+        degree_level:
+          type: object
+          properties: { value: { type: string }, en: { type: string }, ar: { type: string } }
+        description: { type: object, properties: { en: { type: string }, ar: { type: string } } }
+        tuition:
+          type: object
+          properties: { min: { type: number }, max: { type: number }, currency: { type: string } }
+        min_admission_rate: { type: number, nullable: true }
+        duration_years: { type: number, nullable: true }
+        language:
+          type: object
+          properties: { value: { type: string }, en: { type: string }, ar: { type: string } }
+        highlights: { type: array, items: { type: string } }
+        is_featured: { type: boolean }
+        is_active: { type: boolean }
+        faculty: { $ref: '#/components/schemas/Faculty' }
+        universities: { type: array, items: { $ref: '#/components/schemas/University' } }
+    Application:
+      type: object
+      properties:
+        id: { type: integer }
+        application_number: { type: string, example: EG-2026-AB12CD }
+        status:
+          type: object
+          properties: { value: { type: string }, label: { type: string } }
+        applicant:
+          type: object
+          properties:
+            full_name: { type: string }
+            email: { type: string }
+            phone: { type: string, nullable: true }
+            nationality: { type: string, nullable: true }
+            current_education: { type: string, nullable: true }
+        preferred_intake: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        program: { $ref: '#/components/schemas/Program' }
+        preferred_university: { $ref: '#/components/schemas/University' }
+    UniversityInput:
+      type: object
+      required: [name_en, name_ar]
+      properties:
+        name_en: { type: string }
+        name_ar: { type: string }
+        slug: { type: string }
+        city: { type: string }
+        description_en: { type: string }
+        description_ar: { type: string }
+        logo_url: { type: string }
+        website: { type: string }
+        is_accredited: { type: boolean }
+        established_year: { type: integer }
+        global_ranking: { type: integer }
+        is_active: { type: boolean }
+    FacultyInput:
+      type: object
+      required: [name_en, name_ar]
+      properties:
+        name_en: { type: string }
+        name_ar: { type: string }
+        slug: { type: string }
+        description_en: { type: string }
+        description_ar: { type: string }
+        icon: { type: string }
+        image_url: { type: string }
+        is_active: { type: boolean }
+    ProgramInput:
+      type: object
+      required: [faculty_id, degree_level, title_en, title_ar, language]
+      properties:
+        faculty_id: { type: integer }
+        degree_level: { type: string, enum: [bachelor, master, phd] }
+        title_en: { type: string }
+        title_ar: { type: string }
+        slug: { type: string }
+        description_en: { type: string }
+        description_ar: { type: string }
+        tuition_min: { type: number }
+        tuition_max: { type: number }
+        currency: { type: string, example: USD }
+        min_admission_rate: { type: number }
+        duration_years: { type: number }
+        language: { type: string, enum: [arabic, english, both] }
+        highlights: { type: array, items: { type: string } }
+        university_ids: { type: array, items: { type: integer } }
+        is_featured: { type: boolean }
+        is_active: { type: boolean }
+
+security:
+  - bearerAuth: []
