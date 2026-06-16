@@ -13,6 +13,8 @@ default (swappable to MySQL/PostgreSQL).
 
 ## Features
 
+- **Public website** — Arabic-first (RTL) responsive site with an English
+  toggle, server-rendered with Blade + Tailwind + Alpine.
 - **Public catalog** — browse universities, faculties and programs with
   filtering (degree level, faculty, university, tuition range, language),
   full-text search and sorting.
@@ -35,6 +37,7 @@ default (swappable to MySQL/PostgreSQL).
 | Framework      | Laravel 13 (PHP 8.2+)                     |
 | Auth           | JWT (`php-open-source-saver/jwt-auth`)    |
 | Database       | SQLite (default) · MySQL / PostgreSQL    |
+| Frontend       | Blade SSR + Tailwind v4 + Alpine.js (Vite) |
 | API docs       | OpenAPI 3.0 + Swagger UI                  |
 | Code style     | Laravel Pint                             |
 
@@ -62,11 +65,16 @@ php artisan jwt:secret          # generates JWT_SECRET
 touch database/database.sqlite
 php artisan migrate --seed
 
-# 4. Run
+# 4. Frontend assets (Tailwind + Alpine via Vite)
+npm install
+npm run build                   # or: npm run dev
+
+# 5. Run
 php artisan serve               # http://localhost:8000
 ```
 
-Open **http://localhost:8000/docs** for interactive API documentation.
+- **http://localhost:8000** — the EduGate website (Arabic RTL, English toggle)
+- **http://localhost:8000/docs** — interactive API documentation
 
 ### Using MySQL/PostgreSQL instead
 
@@ -165,6 +173,23 @@ Base path: `/api`
 Full request/response schemas: [`docs/openapi.yaml`](docs/openapi.yaml) or `/docs`.
 
 ---
+
+## Frontend (website)
+
+A server-rendered (Blade + Tailwind v4 + Alpine.js) public website, **Arabic
+RTL by default** with an English toggle, styled after the EduGate design cards.
+
+| Route                | Page |
+| -------------------- | ---- |
+| `/`                  | Home — hero, featured programs, faculties, universities, CTA |
+| `/programs`          | Programs catalog with search + filters (faculty, level, sort) |
+| `/programs/{slug}`   | Program detail — tuition, admission, universities + apply form |
+| `/faculties`         | Faculties grid |
+| `/universities`      | Universities grid |
+| `/lang/{ar\|en}`     | Switch language (RTL ⇄ LTR) |
+
+The "Request information" form on each program posts to `POST /apply` and
+creates a public lead (no account required).
 
 ## Data model
 

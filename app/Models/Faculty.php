@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLocalizedContent;
 use Database\Factories\FacultyFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Faculty extends Model
 {
     /** @use HasFactory<FacultyFactory> */
-    use HasFactory;
+    use HasFactory, HasLocalizedContent;
 
     /**
      * @var list<string>
@@ -40,6 +41,37 @@ class Faculty extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * A decorative emoji used on faculty/program cards in the UI.
+     */
+    public function emoji(): string
+    {
+        return [
+            'medicine' => '🩺',
+            'dentistry' => '🦷',
+            'engineering' => '⚙️',
+            'petroleum-engineering' => '🛢️',
+            'energy-engineering' => '⚡',
+            'computers-information' => '💻',
+            'science' => '🔬',
+            'agriculture' => '🌱',
+            'veterinary-medicine' => '🐾',
+            'nursing' => '🩹',
+            'physical-therapy' => '💪',
+            'law' => '⚖️',
+            'al-alsun' => '🗣️',
+            'archaeology' => '🏛️',
+            'mass-communication' => '📡',
+            'business-administration' => '💼',
+            'economics-political-science' => '📈',
+            'education' => '🎓',
+            'physical-education' => '🏅',
+            'fine-arts' => '🎨',
+            'applied-arts' => '✒️',
+            'dar-al-ulum' => '📖',
+        ][$this->slug] ?? '🎓';
     }
 
     /**

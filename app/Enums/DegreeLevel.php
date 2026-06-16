@@ -33,4 +33,9 @@ enum DegreeLevel: string
             self::Phd => 'دكتوراه',
         };
     }
+
+    public function label(): string
+    {
+        return app()->getLocale() === 'ar' ? $this->labelAr() : $this->labelEn();
+    }
 }

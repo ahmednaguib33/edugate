@@ -79,9 +79,9 @@ Route::prefix('admin')->middleware(['auth:api', 'role:admin,agent'])->group(func
 
     // Catalog management & destructive actions (admin only)
     Route::middleware('role:admin')->group(function () {
-        Route::apiResource('universities', AdminUniversityController::class);
-        Route::apiResource('faculties', AdminFacultyController::class);
-        Route::apiResource('programs', AdminProgramController::class);
+        Route::apiResource('universities', AdminUniversityController::class)->names('admin.universities');
+        Route::apiResource('faculties', AdminFacultyController::class)->names('admin.faculties');
+        Route::apiResource('programs', AdminProgramController::class)->names('admin.programs');
         Route::delete('applications/{application}', [AdminApplicationController::class, 'destroy']);
     });
 });

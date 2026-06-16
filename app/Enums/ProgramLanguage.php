@@ -33,4 +33,9 @@ enum ProgramLanguage: string
             self::Both => 'عربي وإنجليزي',
         };
     }
+
+    public function label(): string
+    {
+        return app()->getLocale() === 'ar' ? $this->labelAr() : $this->labelEn();
+    }
 }

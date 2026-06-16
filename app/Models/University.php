@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLocalizedContent;
 use Database\Factories\UniversityFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class University extends Model
 {
     /** @use HasFactory<UniversityFactory> */
-    use HasFactory;
+    use HasFactory, HasLocalizedContent;
 
     /**
      * @var list<string>

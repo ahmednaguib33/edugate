@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DegreeLevel;
 use App\Enums\ProgramLanguage;
+use App\Models\Concerns\HasLocalizedContent;
 use Database\Factories\ProgramFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Program extends Model
 {
     /** @use HasFactory<ProgramFactory> */
-    use HasFactory;
+    use HasFactory, HasLocalizedContent;
 
     /**
      * @var list<string>
